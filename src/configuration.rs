@@ -107,8 +107,7 @@ impl TryFrom<String> for Environment {
             "local" => Ok(Environment::Local),
             "production" => Ok(Environment::Production),
             other => Err(format!(
-                "Unsupported environment type: {}. Use `local` or `production`",
-                other
+                "Unsupported environment type: {other}. Use `local` or `production`"
             )),
         }
     }
