@@ -38,7 +38,7 @@ impl GetMessageSender for TgMessages {
             .with_context(|| format!("User ({:?}) tg_handle is None", user.id))?;
         let chat_id = tg_handle
             .parse::<i64>()
-            .with_context(|| format!("Failed parse chat_id from {}", tg_handle))?;
+            .with_context(|| format!("Failed parse chat_id from {tg_handle}"))?;
 
         Ok(Box::new(TgUser {
             bot: self.bot.clone(),

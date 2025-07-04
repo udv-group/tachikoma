@@ -48,8 +48,8 @@ where
         let user = tx
             .get_user_by_id(&user_id)
             .await
-            .with_context(|| format!("Failed to read user {:?}", user_id))?
-            .with_context(|| format!("User ({:?}) doesn't exist", user_id))?;
+            .with_context(|| format!("Failed to read user {user_id:?}"))?
+            .with_context(|| format!("User ({user_id:?}) doesn't exist"))?;
 
         let msg_sender = self.msg_sender.get_message_sender(&user)?;
 

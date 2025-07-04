@@ -96,10 +96,7 @@ impl UsersInfo {
         let rs = self
             .do_authorized_ldap_request(
                 &self.users_query,
-                &format!(
-                    "(|(mail={})(sAMAccountName={}))",
-                    login_or_mail, login_or_mail
-                ),
+                &format!("(|(mail={login_or_mail})(sAMAccountName={login_or_mail}))"),
             )
             .await?;
 
