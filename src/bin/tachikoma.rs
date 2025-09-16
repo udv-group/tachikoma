@@ -22,9 +22,9 @@ use tachikoma::telemetry::init_tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    let settings = get_config()?;
-    init_tracing();
     set_env();
+    init_tracing();
+    let settings = get_config()?;
 
     tracing::info!("Starting tachikama");
     run_migrations(&settings.database).await?;
