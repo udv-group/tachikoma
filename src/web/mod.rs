@@ -173,10 +173,10 @@ where
 
     let content_hash = format!("{:x}", hasher.finalize());
     get(move |request: axum::extract::Request| async move {
-        if let Some(header_value) = request.headers().get(axum::http::header::IF_NONE_MATCH) {
-            if header_value.to_str().unwrap_or("").eq(&content_hash) {
-                return StatusCode::NOT_MODIFIED.into_response();
-            }
+        if let Some(header_value) = request.headers().get(axum::http::header::IF_NONE_MATCH)
+            && header_value.to_str().unwrap_or("").eq(&content_hash)
+        {
+            return StatusCode::NOT_MODIFIED.into_response();
         }
         (
             [
