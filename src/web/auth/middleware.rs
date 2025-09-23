@@ -4,7 +4,7 @@ use crate::ldap::UsersInfo;
 use anyhow::Context;
 use axum::response::IntoResponse;
 use axum::response::{Redirect, Response};
-use axum::{async_trait, extract::Request, middleware::Next};
+use axum::{extract::Request, middleware::Next};
 use axum_login::{AuthUser, AuthnBackend, UserId};
 use secrecy::SecretString;
 use tracing::info;
@@ -74,7 +74,6 @@ pub enum AuthError {
     AnyhowErr(#[from] anyhow::Error),
 }
 
-#[async_trait]
 impl AuthnBackend for Backend {
     type User = User;
     type Credentials = Credentials;

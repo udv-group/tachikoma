@@ -19,7 +19,7 @@ impl Registry {
         let pool = PgPool::connect_with(settings.with_db()).await?;
         Ok(Registry { pool })
     }
-    pub async fn begin(&self) -> sqlx::Result<RegistryTx> {
+    pub async fn begin(&self) -> sqlx::Result<RegistryTx<'_>> {
         Ok(RegistryTx {
             tx: self.pool.begin().await?,
         })
