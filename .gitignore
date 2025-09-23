@@ -1,8 +1,8 @@
 /target
-Cargo.lock
 .*
 !.gitignore
 !.sqlx
 !.github
+!.env.example
 node_modules
 

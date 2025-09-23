@@ -1,36 +1,16 @@
-use std::error::Error;
-
 use anyhow::Context;
-use teloxide::{
-    Bot,
-    dispatching::{DpHandlerDescription, HandlerExt, UpdateFilterExt, dialogue::InMemStorage},
-    dptree, filter_command,
-    prelude::{DependencyMap, Handler},
-    requests::Requester,
-    types::{Message, Update},
-};
+use teloxide::{Bot, requests::Requester, types::Message};
 
 use crate::logic::users::UsersService;
-
-use super::{BotState, Command};
 
 pub type AnyResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 pub type HandlerResult = AnyResult<()>;
 
-pub fn build_handler()
--> Handler<'static, DependencyMap, Result<(), Box<dyn Error + Send + Sync>>, DpHandlerDescription> {
-    let commands_handler = filter_command::<Command, _>()
-        .branch(dptree::case![Command::Start].endpoint(handle_start_command));
-
-    let messages_handler = Update::filter_message()
-        .enter_dialogue::<Message, InMemStorage<BotState>, BotState>()
-        .branch(commands_handler)
-        .endpoint(main_state_handler);
-
-    dptree::entry().branch(messages_handler)
-}
-
-async fn main_state_handler(bot: Bot, msg: Message, users_service: UsersService) -> HandlerResult {
+pub async fn main_state_handler(
+    bot: Bot,
+    msg: Message,
+    users_service: UsersService,
+) -> HandlerResult {
     tracing::debug!(
         "Handling message. chat_id={} from={:?}",
         msg.chat.id,
@@ -69,7 +49,7 @@ async fn main_state_handler(bot: Bot, msg: Message, users_service: UsersService)
     Ok(())
 }
 
-async fn handle_start_command(bot: Bot, msg: Message) -> HandlerResult {
+pub async fn handle_start_command(bot: Bot, msg: Message) -> HandlerResult {
     tracing::debug!(
         "Handling {:?} command. chat_id={} from={:?}",
         msg.text(),
