@@ -34,6 +34,34 @@ Both `base.toml` and `production.toml` (or `local.toml` for `APP_ENVIRONMENT=loc
 Configuration presidence is as follows: `env` > `production.toml`/`local.toml` > `base.toml`. 
 
 
+# TL;DR -- Local Setup
+
+```bash
+# 1. Install dependencies (Arch/Manjaro)
+sudo pacman -S openldap postgresql
+cargo install sqlx-cli --no-default-features --features postgres
+
+# 2. Start PostgreSQL and run migrations
+scripts/init_db.sh
+# If Postgres is already running natively:
+# SKIP_START=true scripts/init_db.sh
+
+# 3. Set up and start LDAP
+just ldap-setup
+just ldap-start
+
+# 4. Create .env from example and set your Telegram bot token
+cp .env.example .env
+# Edit .env: set TELOXIDE_TOKEN from @BotFather
+
+# 5. Run
+cargo run --bin tachikoma
+```
+
+Open http://localhost:8080 and log in with `jdoe@example.org` / `test` (default LDAP user from [user.ldif](ldap/user.ldif)).
+
+To link Telegram: copy link code from the web UI, send `/start` to the bot, then paste the code.
+
 # Development
 
 Prerequisites:

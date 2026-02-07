@@ -60,7 +60,7 @@ async fn main() -> Result<(), anyhow::Error> {
     )
     .await?;
 
-    let mut dispatcher = build_tg_bot(bot, UsersService::new(registry.clone()));
+    let mut dispatcher = build_tg_bot(bot, UsersService::new(registry.clone()), registry.clone());
 
     select! {
         _ = server.serve_forever() => {

@@ -7,6 +7,8 @@ use crate::db::{
     models::{HostId, User, UserId},
 };
 
+pub const EXTEND_CALLBACK_PREFIX: &str = "extend:";
+
 #[derive(Debug, Clone)]
 pub enum Notification {
     HostsReleased(Vec<HostId>),
@@ -14,8 +16,15 @@ pub enum Notification {
 }
 
 #[async_trait]
-pub trait SendMessage {
+pub trait SendMessage: Send + Sync {
     async fn send_message(&self, msg: String) -> Result<()>;
+    async fn send_message_with_buttons(
+        &self,
+        msg: String,
+        _buttons: Vec<Vec<(String, String)>>,
+    ) -> Result<()> {
+        self.send_message(msg).await
+    }
 }
 
 pub trait GetMessageSender {
@@ -53,7 +62,7 @@ where
 
         let msg_sender = self.msg_sender.get_message_sender(&user)?;
 
-        let msg = match notification {
+        match notification {
             Notification::HostsReleased(hosts_ids) => {
                 if hosts_ids.is_empty() {
                     return Ok(());
@@ -71,7 +80,7 @@ where
                     )
                 }));
 
-                msg
+                msg_sender.send_message(msg).await?;
             }
             Notification::ExpirationSoon(hosts_ids) => {
                 if hosts_ids.is_empty() {
@@ -90,11 +99,15 @@ where
                     )
                 }));
 
-                msg
+                let buttons = vec![vec![
+                    ("+1h".to_string(), format!("{EXTEND_CALLBACK_PREFIX}1")),
+                    ("+8h".to_string(), format!("{EXTEND_CALLBACK_PREFIX}8")),
+                    ("+1d".to_string(), format!("{EXTEND_CALLBACK_PREFIX}24")),
+                ]];
+
+                msg_sender.send_message_with_buttons(msg, buttons).await?;
             }
         };
-
-        msg_sender.send_message(msg).await?;
 
         Ok(())
     }

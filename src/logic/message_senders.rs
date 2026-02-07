@@ -1,7 +1,8 @@
 use anyhow::Context;
 use anyhow::Result;
 use async_trait::async_trait;
-use teloxide::types::ChatId;
+use teloxide::payloads::SendMessageSetters;
+use teloxide::types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup};
 use teloxide::{Bot, prelude::Requester};
 
 use super::notifications::{GetMessageSender, SendMessage};
@@ -56,6 +57,28 @@ struct TgUser {
 impl SendMessage for TgUser {
     async fn send_message(&self, msg: String) -> Result<()> {
         self.bot.send_message(ChatId(self.chat_id), msg).await?;
+        Ok(())
+    }
+
+    async fn send_message_with_buttons(
+        &self,
+        msg: String,
+        buttons: Vec<Vec<(String, String)>>,
+    ) -> Result<()> {
+        let keyboard = InlineKeyboardMarkup::new(
+            buttons
+                .into_iter()
+                .map(|row| {
+                    row.into_iter()
+                        .map(|(label, data)| InlineKeyboardButton::callback(label, data))
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>(),
+        );
+        self.bot
+            .send_message(ChatId(self.chat_id), msg)
+            .reply_markup(keyboard)
+            .await?;
         Ok(())
     }
 }
