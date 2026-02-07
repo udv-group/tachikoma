@@ -182,6 +182,45 @@ impl RegistryTx<'_> {
             .fetch_optional(&mut *self.tx)
             .await
     }
+    pub async fn get_user_by_tg_handle(&mut self, tg_handle: &str) -> sqlx::Result<Option<User>> {
+        sqlx::query_as("SELECT * FROM users WHERE tg_handle = $1")
+            .bind(tg_handle)
+            .fetch_optional(&mut *self.tx)
+            .await
+    }
+    pub async fn get_expiring_hosts_for_user(
+        &mut self,
+        user_id: &UserId,
+        expiring_before: DateTime<Utc>,
+    ) -> sqlx::Result<Vec<LeasedHost>> {
+        sqlx::query_as(
+            r#"
+            SELECT hosts.id as hid, hosts.hostname, hosts.ip_address, hosts.leased_until, hosts.group_id, users.id, users.dn, users.tg_handle, users.email, users.link
+            FROM hosts JOIN users on hosts.user_id = users.id
+            WHERE hosts.user_id = $1 AND hosts.leased_until IS NOT NULL AND hosts.leased_until < $2
+            ORDER BY hosts.leased_until, hosts.ip_address ASC
+            "#,
+        )
+        .bind(user_id.deref())
+        .bind(expiring_before)
+        .fetch_all(&mut *self.tx)
+        .await
+    }
+    pub async fn extend_hosts_lease(
+        &mut self,
+        hosts_ids: &[HostId],
+        hours: i32,
+    ) -> sqlx::Result<()> {
+        let ids: Vec<_> = hosts_ids.iter().map(|h| h.0).collect();
+        sqlx::query(
+            "UPDATE hosts SET leased_until = leased_until + $1::integer * interval '1 hour' WHERE id = any($2) AND leased_until IS NOT NULL",
+        )
+        .bind(hours)
+        .bind(ids.as_slice())
+        .execute(&mut *self.tx)
+        .await?;
+        Ok(())
+    }
     pub async fn set_user_tg_handle(
         &mut self,
         user_id: &UserId,

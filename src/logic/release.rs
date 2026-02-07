@@ -17,11 +17,14 @@ use super::notifications::{GetMessageSender, Notification, Notifier};
 use itertools::Itertools;
 use tracing::{debug, error};
 
+/// How far ahead to look for soon-to-expire hosts (used for both notifications and extend buttons).
+pub const EXPIRATION_NOTIFY_WINDOW: Duration = Duration::from_mins(30);
+
 pub async fn hosts_release_timer<T: GetMessageSender>(registry: Registry, notifier: &Notifier<T>) {
     let mut release_timer = ReleaseTimer {
         registry,
         sent_hosts_notification: HashMap::new(),
-        expiration_notify_delay_time: Duration::from_secs(30 * 60),
+        expiration_notify_delay_time: EXPIRATION_NOTIFY_WINDOW,
     };
     loop {
         match release_timer.release().await {
@@ -136,6 +139,19 @@ impl ReleaseTimer {
                     v.insert(host.id);
                 })
                 .or_insert(HashSet::from_iter(vec![host.id]));
+        });
+
+        // Clean up notification tracking: remove hosts that are no longer expiring soon
+        // (e.g. because their lease was extended via Telegram or web UI).
+        // This ensures a new notification fires when the extended lease approaches expiry again.
+        let all_expiring_ids: HashSet<HostId> = expire_soon_notifications
+            .values()
+            .flat_map(|ids| ids.iter())
+            .copied()
+            .collect();
+        self.sent_hosts_notification.retain(|_, host_ids| {
+            host_ids.retain(|id| all_expiring_ids.contains(id));
+            !host_ids.is_empty()
         });
 
         for (user_id, hosts_ids) in expire_soon_notifications.into_iter() {

@@ -1,7 +1,8 @@
 pub mod handlers;
 
 use crate::{
-    bot::handlers::{handle_start_command, main_state_handler},
+    bot::handlers::{handle_extend_callback, handle_start_command, main_state_handler},
+    db::Registry,
     logic::users::UsersService,
 };
 
@@ -30,6 +31,7 @@ enum Command {
 pub fn build_tg_bot(
     bot: Bot,
     users_service: UsersService,
+    registry: Registry,
 ) -> Dispatcher<Bot, Box<dyn Error + Send + Sync>, DefaultKey> {
     tracing::info!("Starting tachikama");
 
@@ -41,17 +43,25 @@ pub fn build_tg_bot(
         .branch(commands_handler)
         .endpoint(main_state_handler);
 
-    Dispatcher::builder(bot, dptree::entry().branch(messages_handler))
-        .dependencies(dptree::deps![
-            InMemStorage::<BotState>::new(),
-            users_service
-        ])
-        .default_handler(|upd| async move {
-            tracing::warn!("Unhandled update: {:?}", upd);
-        })
-        .error_handler(LoggingErrorHandler::with_custom_text(
-            "An error has occurred in the dispatcher",
-        ))
-        .enable_ctrlc_handler()
-        .build()
+    let callback_handler = Update::filter_callback_query().endpoint(handle_extend_callback);
+
+    Dispatcher::builder(
+        bot,
+        dptree::entry()
+            .branch(messages_handler)
+            .branch(callback_handler),
+    )
+    .dependencies(dptree::deps![
+        InMemStorage::<BotState>::new(),
+        users_service,
+        registry
+    ])
+    .default_handler(|upd| async move {
+        tracing::warn!("Unhandled update: {:?}", upd);
+    })
+    .error_handler(LoggingErrorHandler::with_custom_text(
+        "An error has occurred in the dispatcher",
+    ))
+    .enable_ctrlc_handler()
+    .build()
 }
