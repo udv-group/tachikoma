@@ -4,7 +4,7 @@ use fake::{Fake, Faker};
 use sqlx::PgPool;
 use sqlx::types::ipnetwork::IpNetwork;
 
-use rand::Rng;
+use rand::RngExt;
 use tachikoma::db::models::{GroupId, HostId, UserId};
 use uuid::Uuid;
 
