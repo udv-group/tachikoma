@@ -17,6 +17,12 @@ pub struct Settings {
     pub database: DatabaseSettings,
     pub ldap: LdapSettings,
     pub app: AppSettings,
+    pub telegram: Option<TelegramSettings>,
+}
+
+#[derive(Deserialize, Clone)]
+pub struct TelegramSettings {
+    pub token: String,
 }
 
 #[derive(Deserialize, Clone)]

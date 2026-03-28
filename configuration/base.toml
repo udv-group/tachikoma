@@ -23,3 +23,6 @@ password = ""
 # part of subtree were users are going to be queried
 # consult local.toml for an example
 users_query = ""
+
+[telegram]
+token = ""

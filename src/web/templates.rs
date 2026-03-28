@@ -15,7 +15,7 @@ use super::auth::middleware::User;
 pub struct HostsPage<T: Template> {
     pub page: T,
     pub user: UserInfo,
-    pub auth_link: String,
+    pub auth_link: Option<String>,
     pub app_info: AppInfo,
 }
 
