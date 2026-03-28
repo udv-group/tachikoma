@@ -24,7 +24,7 @@ use tachikoma::telemetry::init_tracing;
 async fn main() -> Result<(), anyhow::Error> {
     set_env();
     init_tracing();
-    let settings = get_config()?;
+    let settings = get_config().expect("Unable to get configuration");
 
     tracing::info!("Starting tachikama");
     run_migrations(&settings.database).await?;
@@ -32,7 +32,8 @@ async fn main() -> Result<(), anyhow::Error> {
     let bot = Bot::from_env();
     let bot_username = bot
         .get_me()
-        .await?
+        .await
+        .with_context(|| "Unable to get bot username")?
         .user
         .username
         .with_context(|| "Bot hasn't username?!")?;
@@ -41,15 +42,22 @@ async fn main() -> Result<(), anyhow::Error> {
     let notifier = Notifier::new(registry.clone(), TgMessages::new(bot.clone()));
 
     let (ldap_conn, ldap) =
-        LdapConnAsync::with_settings(settings.ldap.clone().into(), &settings.ldap.url).await?;
+        LdapConnAsync::with_settings(settings.ldap.clone().into(), &settings.ldap.url)
+            .await
+            .with_context(|| "Unable to get ldap connection")?;
     let ldap_conn_task = drive!(ldap_conn);
+
     let (authorized_ldap_conn, mut authorized_ldap) =
-        LdapConnAsync::with_settings(settings.ldap.clone().into(), &settings.ldap.url).await?;
+        LdapConnAsync::with_settings(settings.ldap.clone().into(), &settings.ldap.url)
+            .await
+            .with_context(|| "Unable to get authorized ldap connection")?;
     let authorized_ldap_conn_task = drive!(authorized_ldap_conn);
     authorized_ldap
         .simple_bind(&settings.ldap.login, settings.ldap.password.expose_secret())
-        .await?
-        .success()?;
+        .await
+        .with_context(|| "Unable to bind credentials")?
+        .success()
+        .with_context(|| "Unable to authorize")?;
 
     let server = Application::build(
         &settings,
