@@ -25,8 +25,12 @@
             <p class="text-base/7 font-semibold">Account</p>
             <p class="text-sm/6 font-medium"> Login: {{user.login}} </p>
             <p class="text-sm/6 font-medium"> Telegram linked: {{user.tg_linked}} </p>
+            {% match auth_link %}
+            {% when Some with (auth_link) %}
             <p class="text-sm/6 font-medium">To link your account send code
                 "{{user.link}}" to the <a class="text-blue-600 visited:text-purple-600" href="{{auth_link}}" target="_blank">{{auth_link}}</a></p>
+            {% when None %}
+            {% endmatch %}
             <fieldset class="space-y-1">
                 <p class="text-base/7 font-semibold">Groups:</p>
                 {% for group in user.groups %}

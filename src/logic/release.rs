@@ -20,7 +20,10 @@ use tracing::{debug, error};
 /// How far ahead to look for soon-to-expire hosts (used for both notifications and extend buttons).
 pub const EXPIRATION_NOTIFY_WINDOW: Duration = Duration::from_mins(30);
 
-pub async fn hosts_release_timer<T: GetMessageSender>(registry: Registry, notifier: &Notifier<T>) {
+pub async fn hosts_release_timer<T: GetMessageSender>(
+    registry: Registry,
+    notifier: &Option<Notifier<T>>,
+) {
     let mut release_timer = ReleaseTimer {
         registry,
         sent_hosts_notification: HashMap::new(),
@@ -36,9 +39,10 @@ pub async fn hosts_release_timer<T: GetMessageSender>(registry: Registry, notifi
                         .map(|h| h.id.clone().to_string())
                         .join(", ")
                 );
-                if let Err(err) = release_timer
-                    .notify_released_hosts(notifier, &released_hosts)
-                    .await
+                if let Some(notifier) = notifier
+                    && let Err(err) = release_timer
+                        .notify_released_hosts(notifier, &released_hosts)
+                        .await
                 {
                     error!("Failed released hosts notification: {}", err);
                 };
@@ -47,7 +51,9 @@ pub async fn hosts_release_timer<T: GetMessageSender>(registry: Registry, notifi
             Err(err) => error!("Release fail: {err}"),
         };
 
-        if let Err(err) = release_timer.notify_soon_release(notifier).await {
+        if let Some(notifier) = notifier
+            && let Err(err) = release_timer.notify_soon_release(notifier).await
+        {
             error!("Notify soon release fail: {err}");
         }
         sleep(Duration::from_secs(10)).await;

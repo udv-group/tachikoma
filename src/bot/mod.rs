@@ -2,6 +2,7 @@ pub mod handlers;
 
 use crate::{
     bot::handlers::{handle_extend_callback, handle_start_command, main_state_handler},
+    configuration::TelegramSettings,
     db::Registry,
     logic::users::UsersService,
 };
@@ -12,6 +13,7 @@ use teloxide::{
     dispatching::{DefaultKey, Dispatcher, dialogue::InMemStorage},
     filter_command,
     macros::BotCommands,
+    net::client_from_env,
     prelude::*,
 };
 
@@ -26,6 +28,11 @@ pub enum BotState {
 enum Command {
     #[command(description = "Start dialogue")]
     Start,
+}
+
+pub fn from_config(config: TelegramSettings) -> Bot {
+    let client = client_from_env();
+    Bot::with_client(config.token, client)
 }
 
 pub fn build_tg_bot(

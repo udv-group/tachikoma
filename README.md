@@ -15,15 +15,42 @@ Web server is using LDAP to manage auth and is designed to be used with AD serve
 
 ## Configuration
 
-### Env
+### Environment variables
 
-`APP_ENVIRONMENT` - what environment app is running in. Possible values are `local` (default) and `production`. Affects configuration lookup.
+The application loads a local `.env` file automatically if it exists. See [.env.example](.env.example) for a development example.
 
-`CONFIG_DIR` - path to directory with configuration files, default is `/etc/tachikoma` for `production` environment.
+Runtime variables:
 
-`INCLUDE_SPAN_EVENTS` - flag to include span events in log output, making it much more verbose. Possible values are `true` and `false` (default).
+- `APP_ENVIRONMENT` - selects configuration profile. Supported values: `local` (default) and `production`.
+- `CONFIG_DIR` - directory with configuration files. Defaults to `configuration` for `local` and `/etc/tachikoma` for `production`.
+- `INCLUDE_SPAN_EVENTS` - if set to `true`, tracing logs include span enter/exit events.
+- `RUST_LOG` - optional tracing filter, for example `RUST_LOG=debug`. Defaults to `info`.
 
-`TELOXIDE_TOKEN` - telegram bot token to enable telegram notifications. Can be obtained from [@Botfather](https://t.me/botfather) bot on telegram.
+Configuration can also be overridden via environment variables with the `APP_` prefix. This is useful in production when you do not want to bake secrets into TOML files.
+
+Examples:
+
+- `APP_DATABASE__HOST`
+- `APP_DATABASE__PORT`
+- `APP_DATABASE__USERNAME`
+- `APP_DATABASE__PASSWORD`
+- `APP_DATABASE__DATABASE_NAME`
+- `APP_DATABASE__REQUIRE_SSL`
+- `APP_LDAP__URL`
+- `APP_LDAP__USE_TLS`
+- `APP_LDAP__NO_TLS_VERIFY`
+- `APP_LDAP__LOGIN`
+- `APP_LDAP__PASSWORD`
+- `APP_LDAP__USERS_QUERY`
+- `APP_APP__HOST`
+- `APP_APP__PORT`
+- `APP_APP__LEASE_LIMIT`
+- `APP_APP__HMAC_SECRET`
+
+Development-only variables:
+
+- `DATABASE_URL` - used by `sqlx`, migrations, and helper scripts such as [scripts/init_db.sh](scripts/init_db.sh). It is not used by the application runtime configuration.
+- `SQLX_OFFLINE` - useful for local development with `sqlx`; present in `.env.example`.
 
 ### Configuration files
 
@@ -50,9 +77,8 @@ scripts/init_db.sh
 just ldap-setup
 just ldap-start
 
-# 4. Create .env from example and set your Telegram bot token
+# 4. Create .env from example
 cp .env.example .env
-# Edit .env: set TELOXIDE_TOKEN from @BotFather
 
 # 5. Run
 cargo run --bin tachikoma

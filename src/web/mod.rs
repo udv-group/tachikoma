@@ -43,7 +43,7 @@ struct AppState {
 }
 
 #[derive(Clone)]
-pub struct AuthLink(pub String);
+pub struct AuthLink(pub Option<String>);
 
 pub struct Application {
     listening_addr: SocketAddr,
@@ -56,7 +56,7 @@ impl Application {
         registry: Registry,
         ldap: ldap3::Ldap,
         authorized_ldap: ldap3::Ldap,
-        auth_link: String,
+        auth_link: Option<String>,
     ) -> Result<Application, anyhow::Error> {
         let tracing_layer = TraceLayer::new_for_http().make_span_with(|req: &Request<Body>| {
             let method = req.method();
