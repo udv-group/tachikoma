@@ -3,12 +3,11 @@ use std::pin::Pin;
 
 use anyhow::Context;
 use futures_concurrency::future::Race;
-use ldap3::LdapConnAsync;
-use secrecy::ExposeSecret;
 use tachikoma::{
     bot::{build_tg_bot, from_config},
     configuration::get_config,
     db::{Registry, run_migrations},
+    ldap::UsersInfo,
     logic::{
         message_senders::TgMessages, notifications::Notifier, release::hosts_release_timer,
         users::UsersService,
@@ -17,7 +16,6 @@ use tachikoma::{
     web::Application,
 };
 
-use ldap3::drive;
 use teloxide::{Bot, requests::Requester};
 use tracing::info;
 
@@ -57,32 +55,13 @@ async fn main() -> Result<(), anyhow::Error> {
         (None, None, None)
     };
 
-    tracing::info!("Making unauthorized ldap connection");
-    let (ldap_conn, ldap) =
-        LdapConnAsync::with_settings(settings.ldap.clone().into(), &settings.ldap.url)
-            .await
-            .with_context(|| "Unable to get ldap connection")?;
-    let ldap_conn_task = drive!(ldap_conn);
-
-    tracing::info!("Making authorized ldap connection");
-    let (authorized_ldap_conn, mut authorized_ldap) =
-        LdapConnAsync::with_settings(settings.ldap.clone().into(), &settings.ldap.url)
-            .await
-            .with_context(|| "Unable to get authorized ldap connection")?;
-    let authorized_ldap_conn_task = drive!(authorized_ldap_conn);
-    authorized_ldap
-        .simple_bind(&settings.ldap.login, settings.ldap.password.expose_secret())
-        .await
-        .with_context(|| "Unable to bind credentials")?
-        .success()
-        .with_context(|| "Unable to authorize")?;
+    let users_info = UsersInfo::new(settings.ldap.clone()).await?;
 
     tracing::info!("Server starting up");
     let server = Application::build(
         &settings,
         registry.clone(),
-        ldap,
-        authorized_ldap,
+        users_info.clone(),
         tg_bot_username.map(|username| format!("https://t.me/{username}")),
     )
     .await?;
@@ -96,17 +75,10 @@ async fn main() -> Result<(), anyhow::Error> {
             }
         }),
         Box::pin(async move {
-            if let Err(err) = ldap_conn_task.await {
-                tracing::error!("Ldap connection failed {err}");
+            if let Err(err) = users_info.work().await {
+                tracing::error!("users_info task failed {err}");
             } else {
-                tracing::info!("Ldap connection exited");
-            }
-        }),
-        Box::pin(async move {
-            if let Err(err) = authorized_ldap_conn_task.await {
-                tracing::error!("Authorized ldap connection failed {err}");
-            } else {
-                tracing::info!("Authorized ldap connection exited");
+                tracing::info!("users_info task finished");
             }
         }),
     ];
