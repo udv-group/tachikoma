@@ -1,7 +1,6 @@
 use crate::db::Registry;
 use crate::db::models::User as DbUser;
 use crate::ldap::UsersInfo;
-use anyhow::Context;
 use axum::response::IntoResponse;
 use axum::response::{Redirect, Response};
 use axum::{extract::Request, middleware::Next};
@@ -129,13 +128,22 @@ impl AuthnBackend for Backend {
             return Ok(None);
         };
 
-        let u_info = self
-            .users_info
-            .get_user_info(&user.dn)
-            .await?
-            .with_context(|| format!("Missed user info '{}' ({})", user.dn, user.email))?;
-
-        Ok(Some((user, u_info.groups).into()))
+        match self.users_info.get_user_info(&user.dn).await {
+            Ok(Some(u_info)) => Ok(Some((user, u_info.groups).into())),
+            Ok(None) => {
+                tracing::warn!("Missed user info '{}' ({})", user.dn, user.email);
+                Ok(None)
+            }
+            Err(err) => {
+                tracing::error!(
+                    "Unable to get user info '{}' ({}): {}",
+                    user.dn,
+                    user.email,
+                    err
+                );
+                Ok(None)
+            }
+        }
     }
 }
 

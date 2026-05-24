@@ -3,6 +3,7 @@ use std::{
     path::PathBuf,
 };
 
+use duration_string::DurationString;
 use secrecy::ExposeSecret;
 use secrecy::SecretString;
 use serde::{Deserialize, Deserializer};
@@ -33,6 +34,7 @@ pub struct LdapSettings {
     pub login: String,
     pub password: SecretString,
     pub users_query: String,
+    pub reconnect_interval: DurationString,
 }
 
 impl From<LdapSettings> for ldap3::LdapConnSettings {

@@ -1,14 +1,25 @@
-use ldap3::Ldap;
+use std::sync::Arc;
+
+use ldap3::{Ldap, LdapConnAsync};
 use ldap3::{ResultEntry, SearchEntry};
 use secrecy::{ExposeSecret, SecretString};
 
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
+use tokio::sync::Mutex;
+use tokio::time::sleep;
+use tokio::{select, spawn};
+
+use crate::configuration::LdapSettings;
+
+struct UsersInfoState {
+    ldap: Option<Ldap>,
+    authorized_ldap: Option<Ldap>,
+}
 
 #[derive(Clone)]
 pub struct UsersInfo {
-    pub ldap: Ldap,
-    pub authorized_ldap: Ldap,
-    pub users_query: String,
+    ldap_settings: LdapSettings,
+    state: Arc<Mutex<UsersInfoState>>,
 }
 
 #[derive(Debug)]
@@ -53,12 +64,51 @@ impl TryFrom<SearchEntry> for AdUserInfo {
 }
 
 impl UsersInfo {
-    pub async fn new(ldap: Ldap, authorized_ldap: Ldap, users_query: String) -> Result<Self> {
+    pub async fn new(ldap_settings: LdapSettings) -> Result<Self> {
         Ok(Self {
-            ldap,
-            users_query,
-            authorized_ldap,
+            ldap_settings,
+            state: Arc::new(Mutex::new(UsersInfoState {
+                authorized_ldap: None,
+                ldap: None,
+            })),
         })
+    }
+
+    pub async fn work(self) -> Result<()> {
+        select! {
+            res = keep_authorized_ldap_conn(self.clone()) => {
+                if let Err(err) = res {
+                    tracing::error!("Failed keep_authorized_ldap_conn task: {}", err);
+                } else {
+                    tracing::info!("keep_authorized_ldap_conn task finished")
+                }
+            },
+            res = keep_ldap_conn(self.clone()) => {
+                if let Err(err) = res {
+                    tracing::error!("Failed keep_ldap_conn task: {}", err);
+                } else {
+                    tracing::info!("keep_ldap_conn task finished")
+                }
+            },
+        }
+
+        Ok(())
+    }
+
+    async fn get_authorized_ldap(&self) -> Result<Ldap> {
+        let state = self.state.lock().await;
+        state
+            .authorized_ldap
+            .clone()
+            .with_context(|| "Authorized ldap connection is broken".to_string())
+    }
+
+    async fn get_ldap(&self) -> Result<Ldap> {
+        let state = self.state.lock().await;
+        state
+            .ldap
+            .clone()
+            .with_context(|| "Ldap connection is broken".to_string())
     }
 
     async fn do_authorized_ldap_request(
@@ -66,7 +116,7 @@ impl UsersInfo {
         query: &str,
         filter: &str,
     ) -> Result<Vec<ResultEntry>> {
-        let mut ldap = self.authorized_ldap.clone();
+        let mut ldap = self.get_authorized_ldap().await?;
         let res = ldap
             .search(
                 query,
@@ -95,7 +145,7 @@ impl UsersInfo {
     pub async fn find_user_info(&self, login_or_mail: String) -> Result<Option<AdUserInfo>> {
         let rs = self
             .do_authorized_ldap_request(
-                &self.users_query,
+                &self.ldap_settings.users_query,
                 &format!("(|(mail={login_or_mail})(sAMAccountName={login_or_mail}))"),
             )
             .await?;
@@ -112,7 +162,7 @@ impl UsersInfo {
         if password.expose_secret().is_empty() {
             return Err(anyhow!("Empty password"));
         };
-        let mut ldap = self.ldap.clone();
+        let mut ldap = self.get_ldap().await?;
         let result = ldap
             .simple_bind(user_dn, password.expose_secret())
             .await
@@ -122,5 +172,73 @@ impl UsersInfo {
             return Err(err.into());
         }
         Ok(())
+    }
+}
+
+async fn keep_ldap_conn(users_info: UsersInfo) -> Result<()> {
+    loop {
+        tracing::info!("Making unauthorized ldap connection");
+
+        let ldap_settings = users_info.ldap_settings.clone();
+
+        match LdapConnAsync::with_settings(ldap_settings.clone().into(), &ldap_settings.url).await {
+            Ok((ldap_conn, ldap)) => {
+                users_info.state.lock().await.ldap = Some(ldap);
+                tracing::info!("Ldap connection created");
+
+                if let Err(err) = ldap_conn.drive().await {
+                    tracing::error!("Ldap connection error: {err}");
+                } else {
+                    tracing::warn!("Ldap connection closed");
+                }
+            }
+            Err(err) => {
+                tracing::error!("Unable to get ldap connection: {err}");
+            }
+        }
+        users_info.state.lock().await.ldap = None;
+        sleep(users_info.ldap_settings.reconnect_interval.into()).await;
+    }
+}
+
+async fn keep_authorized_ldap_conn(users_info: UsersInfo) -> Result<()> {
+    loop {
+        tracing::info!("Making authorized ldap connection");
+
+        let ldap_settings = users_info.ldap_settings.clone();
+
+        match LdapConnAsync::with_settings(ldap_settings.clone().into(), &ldap_settings.url).await {
+            Ok((authorized_ldap_conn, mut authorized_ldap)) => {
+                let authorized_ldap_conn_task =
+                    spawn(async move { authorized_ldap_conn.drive().await });
+
+                authorized_ldap
+                    .simple_bind(&ldap_settings.login, ldap_settings.password.expose_secret())
+                    .await
+                    .with_context(|| "Unable to bind credentials")?
+                    .success()
+                    .with_context(|| "Unable to authorize")?;
+
+                users_info.state.lock().await.authorized_ldap = Some(authorized_ldap);
+                tracing::info!("Autorized ldap connection created");
+
+                match authorized_ldap_conn_task.await {
+                    Err(err) => {
+                        tracing::error!("Unable to get authorized_ldap_conn_task result: {err}");
+                    }
+                    Ok(Err(err)) => {
+                        tracing::error!("Autorized ldap connection error: {err}");
+                    }
+                    Ok(Ok(_)) => {
+                        tracing::warn!("Authorized ldap connection closed");
+                    }
+                };
+            }
+            Err(err) => {
+                tracing::error!("Unable to get authorized ldap connection: {err}");
+            }
+        }
+        users_info.state.lock().await.authorized_ldap = None;
+        sleep(users_info.ldap_settings.reconnect_interval.into()).await;
     }
 }

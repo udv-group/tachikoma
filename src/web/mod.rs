@@ -54,8 +54,7 @@ impl Application {
     pub async fn build(
         settings: &Settings,
         registry: Registry,
-        ldap: ldap3::Ldap,
-        authorized_ldap: ldap3::Ldap,
+        users_info: UsersInfo,
         auth_link: Option<String>,
     ) -> Result<Application, anyhow::Error> {
         let tracing_layer = TraceLayer::new_for_http().make_span_with(|req: &Request<Body>| {
@@ -70,13 +69,9 @@ impl Application {
             .with_secure(true)
             .with_expiry(Expiry::OnInactivity(Duration::days(7)));
 
-        let users_info =
-            UsersInfo::new(ldap, authorized_ldap, settings.ldap.users_query.clone()).await?;
-        let auth_layer = AuthManagerLayerBuilder::new(
-            Backend::new(registry.clone(), users_info.clone()),
-            session_layer,
-        )
-        .build();
+        let auth_layer =
+            AuthManagerLayerBuilder::new(Backend::new(registry.clone(), users_info), session_layer)
+                .build();
 
         let assets_router = Router::new()
             .route(
