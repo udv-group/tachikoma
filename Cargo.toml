@@ -18,6 +18,7 @@ chrono = { version = "0.4.44", default-features = false, features = [
 ] }
 config = { version = "^0.15" }
 dotenv = "0.15.0"
+duration-string = { version = "0.5.3", features = ["serde"] }
 futures-concurrency = "^7.7"
 hyper = "1.7.0"
 ipnetwork = { version = "0.21", features = ["serde"] }

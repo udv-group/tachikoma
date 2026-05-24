@@ -16,6 +16,7 @@ require_ssl = false
 url = "ldap://your-ldap.addr"
 use_tls = false
 no_tls_verify = true
+reconnect_interval = "10s"
 
 # ldap account to authenticate tachikoma
 login = ""

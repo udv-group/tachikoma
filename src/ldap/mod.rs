@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::time::Duration;
 
 use ldap3::{Ldap, LdapConnAsync};
 use ldap3::{ResultEntry, SearchEntry};
@@ -176,8 +175,6 @@ impl UsersInfo {
     }
 }
 
-const RECONNECT_INTERVAL: Duration = Duration::from_secs(10);
-
 async fn keep_ldap_conn(users_info: UsersInfo) -> Result<()> {
     loop {
         tracing::info!("Making unauthorized ldap connection");
@@ -200,7 +197,7 @@ async fn keep_ldap_conn(users_info: UsersInfo) -> Result<()> {
             }
         }
         users_info.state.lock().await.ldap = None;
-        sleep(RECONNECT_INTERVAL).await;
+        sleep(users_info.ldap_settings.reconnect_interval.into()).await;
     }
 }
 
@@ -242,6 +239,6 @@ async fn keep_authorized_ldap_conn(users_info: UsersInfo) -> Result<()> {
             }
         }
         users_info.state.lock().await.authorized_ldap = None;
-        sleep(RECONNECT_INTERVAL).await;
+        sleep(users_info.ldap_settings.reconnect_interval.into()).await;
     }
 }

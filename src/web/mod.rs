@@ -69,12 +69,9 @@ impl Application {
             .with_secure(true)
             .with_expiry(Expiry::OnInactivity(Duration::days(7)));
 
-        let auth_layer = AuthManagerLayerBuilder::new(
-            // users_info must pass as trait, nut structure
-            Backend::new(registry.clone(), users_info),
-            session_layer,
-        )
-        .build();
+        let auth_layer =
+            AuthManagerLayerBuilder::new(Backend::new(registry.clone(), users_info), session_layer)
+                .build();
 
         let assets_router = Router::new()
             .route(
