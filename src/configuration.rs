@@ -52,6 +52,8 @@ pub struct AppSettings {
     pub port: u16,
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub lease_limit: usize,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    pub api_token_limit: usize,
     #[serde(deserialize_with = "deserialize_key_secret")]
     pub hmac_secret: Vec<u8>,
 }

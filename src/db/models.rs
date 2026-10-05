@@ -127,3 +127,47 @@ pub struct AdGroupLeaseLimit {
     pub group: String,
     pub limit: i32,
 }
+
+#[derive(sqlx::Type, Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[sqlx(transparent)]
+#[serde(transparent)]
+pub struct ApiTokenId(pub i32);
+
+impl Deref for ApiTokenId {
+    type Target = i32;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl From<i32> for ApiTokenId {
+    fn from(value: i32) -> Self {
+        Self(value)
+    }
+}
+
+impl Display for ApiTokenId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl FromStr for ApiTokenId {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.parse::<i32>() {
+            Ok(v) => Ok(Self(v)),
+            Err(_) => Err(format!("Wrong value {s}, can not parse as i32")),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, FromRow)]
+pub struct ApiToken {
+    pub id: ApiTokenId,
+    pub user_id: UserId,
+    pub name: Option<String>,
+    pub token_hash: String,
+    pub created_at: DateTime<Utc>,
+}
