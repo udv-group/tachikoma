@@ -7,7 +7,7 @@ use models::{AdGroupLeaseLimit, Group, GroupId};
 use sqlx::{PgPool, Postgres, Transaction};
 
 use crate::configuration::DatabaseSettings;
-use crate::db::models::{Host, HostId, LeasedHost, User, UserId};
+use crate::db::models::{ApiToken, ApiTokenId, Host, HostId, LeasedHost, User, UserId};
 
 #[derive(Clone)]
 pub struct Registry {
@@ -273,6 +273,72 @@ impl RegistryTx<'_> {
         )
         .fetch_all(&mut *self.tx)
         .await
+    }
+
+    pub async fn create_api_token(
+        &mut self,
+        user_id: &UserId,
+        name: Option<&str>,
+        token_hash: &str,
+    ) -> sqlx::Result<ApiToken> {
+        sqlx::query_as(
+            r#"
+            INSERT INTO api_tokens (user_id, name, token_hash)
+            VALUES ($1, $2, $3)
+            RETURNING id, user_id, name, token_hash, created_at
+            "#,
+        )
+        .bind(user_id.deref())
+        .bind(name)
+        .bind(token_hash)
+        .fetch_one(&mut *self.tx)
+        .await
+    }
+
+    pub async fn list_api_tokens_for_user(
+        &mut self,
+        user_id: &UserId,
+    ) -> sqlx::Result<Vec<ApiToken>> {
+        sqlx::query_as(
+            r#"
+            SELECT id, user_id, name, token_hash, created_at
+            FROM api_tokens
+            WHERE user_id = $1
+            ORDER BY created_at DESC
+            "#,
+        )
+        .bind(user_id.deref())
+        .fetch_all(&mut *self.tx)
+        .await
+    }
+
+    pub async fn get_api_token_by_hash(
+        &mut self,
+        token_hash: &str,
+    ) -> sqlx::Result<Option<ApiToken>> {
+        sqlx::query_as(
+            r#"
+            SELECT id, user_id, name, token_hash, created_at
+            FROM api_tokens
+            WHERE token_hash = $1
+            "#,
+        )
+        .bind(token_hash)
+        .fetch_optional(&mut *self.tx)
+        .await
+    }
+
+    pub async fn delete_api_token_for_user(
+        &mut self,
+        token_id: &ApiTokenId,
+        user_id: &UserId,
+    ) -> sqlx::Result<bool> {
+        let result = sqlx::query("DELETE FROM api_tokens WHERE id = $1 AND user_id = $2")
+            .bind(token_id.deref())
+            .bind(user_id.deref())
+            .execute(&mut *self.tx)
+            .await?;
+        Ok(result.rows_affected() > 0)
     }
 }
 

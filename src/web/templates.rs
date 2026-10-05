@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     AppInfo,
-    db::models::{Group, GroupId, Host, HostId, LeasedHost, User as UserDb},
+    db::models::{ApiTokenId, Group, GroupId, Host, HostId, LeasedHost, User as UserDb},
 };
 
 use super::auth::middleware::User;
@@ -33,6 +33,21 @@ pub struct HostsLeasePage {
 #[template(path = "all_hosts.html", escape = "none")]
 pub struct AllHostsPage {
     pub hosts: Vec<HostInfo>,
+}
+
+#[derive(Template, Debug)]
+#[template(path = "tokens.html", escape = "none")]
+pub struct TokensPage {
+    pub tokens: Vec<TokensTokenInfo>,
+    pub created_token: Option<String>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct TokensTokenInfo {
+    pub id: ApiTokenId,
+    pub name: Option<String>,
+    pub created_at: String,
 }
 
 #[derive(Deserialize, Debug)]

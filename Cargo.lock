@@ -3437,7 +3437,7 @@ dependencies = [
 
 [[package]]
 name = "tachikoma"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "anyhow",
  "askama",
@@ -3464,6 +3464,7 @@ dependencies = [
  "serde",
  "serde-aux",
  "serde_json",
+ "sha2",
  "sqlx",
  "teloxide",
  "thiserror 2.0.18",

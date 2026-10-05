@@ -1,0 +1,60 @@
+<div class="flex flex-col place-self-center py-12 w-9/12">
+    <div class="flex flex-col gap-4 place-self-center py-6 w-full">
+        {% if let Some(error) = error %}
+        <div>
+            <p style="color:red;"><i>{{error}}</i></p>
+        </div>
+        {% endif %}
+        {% if let Some(created_token) = created_token %}
+        <fieldset class="space-y-6 rounded-xl bg-black/5 dark:bg-white/5 p-6 sm:p-10">
+            <p class="text-base/7 font-semibold">New API token</p>
+            <p class="text-sm/6 font-medium">Copy this token now. It will not be shown again.</p>
+            <code class="block break-all text-sm/6 bg-black/10 dark:bg-white/10 p-3 rounded-lg">{{created_token}}</code>
+        </fieldset>
+        {% endif %}
+        <fieldset class="space-y-6 rounded-xl bg-black/5 dark:bg-white/5 p-6 sm:p-10">
+            <p class="text-base/7 font-semibold">Create API token</p>
+            <form method="post" action="/tokens" class="space-y-4">
+                <div>
+                    <label for="name" class="text-sm/6 font-medium">Name (optional)</label>
+                    <input
+                        class="ml-2 appearance-none rounded-lg border-none bg-black/5 dark:bg-white/5 py-1.5 px-3 text-sm/6"
+                        type="text" id="name" name="name" placeholder="e.g. laptop, CI">
+                </div>
+                <button
+                    class="inline-flex items-center gap-2 rounded-md bg-gray-300 dark:bg-gray-700 py-1.5 px-3 text-sm/6 font-semibold shadow-inner shadow-white/10"
+                    type="submit">Create token</button>
+            </form>
+        </fieldset>
+        <fieldset class="space-y-6 rounded-xl bg-black/5 dark:bg-white/5 p-6 sm:p-10">
+            <p class="text-base/7 font-semibold">Your tokens</p>
+            {% if tokens.is_empty() %}
+            <p class="text-sm/6 font-medium">No tokens yet.</p>
+            {% else %}
+            <ul class="space-y-3">
+                {% for token in tokens %}
+                <li class="flex flex-wrap items-center justify-between gap-3 text-sm/6">
+                    <div>
+                        <p class="font-medium">
+                            {% match token.name %}
+                            {% when Some with (name) %}
+                            {{ name }}
+                            {% when None %}
+                            —
+                            {% endmatch %}
+                        </p>
+                        <p class="text-gray-500 dark:text-gray-400">created {{ token.created_at }}</p>
+                    </div>
+                    <form method="post" action="/tokens/{{ token.id }}/revoke"
+                        onsubmit="return confirm('Revoke this token?');">
+                        <button
+                            class="inline-flex items-center gap-2 rounded-md bg-gray-300 dark:bg-gray-700 py-1.5 px-3 text-sm/6 font-semibold shadow-inner shadow-white/10"
+                            type="submit">Revoke</button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </fieldset>
+    </div>
+</div>
