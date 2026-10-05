@@ -15,6 +15,7 @@ pub enum Notification {
     ExpirationSoon(Vec<HostId>),
 }
 
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub trait SendMessage: Send + Sync {
     async fn send_message(&self, msg: String) -> Result<()>;

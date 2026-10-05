@@ -88,6 +88,59 @@ Open http://localhost:8080 and log in with `jdoe@example.org` / `test` (default 
 
 To link Telegram: copy link code from the web UI, send `/start` to the bot, then paste the code.
 
+## API tokens and MCP
+
+Create and revoke personal API tokens in the web UI at `/tokens` (after login). The full token is shown only once.
+
+Use the token as a Bearer credential:
+
+```http
+Authorization: Bearer tk_<your-token>
+```
+
+- JSON API: `http(s)://<host>/api/v1/...` (same operations as the lease UI)
+- MCP (Streamable HTTP, same port): `http(s)://<host>/mcp`
+
+MCP tools mirror the JSON API (list groups/hosts, lease, release).
+
+### Configure Cursor
+
+1. Log in to Tachikoma and create an API token at `/tokens`. Copy the `tk_…` value (shown once).
+2. Export it in your shell profile (recommended) so it is not committed to git:
+
+```bash
+export TACHIKOMA_API_TOKEN='tk_…'
+```
+
+3. Add a Streamable HTTP MCP server in Cursor:
+
+- **Project-level:** `.cursor/mcp.json` in a project root, or  
+- **Global:** `~/.cursor/mcp.json`
+
+```json
+{
+  "mcpServers": {
+    "tachikoma": {
+      "url": "http://localhost:8080/mcp",
+      "headers": {
+        "Authorization": "Bearer ${env:TACHIKOMA_API_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+Replace `http://localhost:8080` with your Tachikoma base URL (include the reverse-proxy path if you use one). Keep the `/mcp` suffix.
+
+4. Reload MCP servers in Cursor (or restart Cursor). Confirm `tachikoma` is enabled under **Settings → Tools & MCP** (or **Cursor Settings → MCP**).
+5. In Agent chat, Tachikoma tools such as `list_groups`, `list_available_hosts`, `lease_hosts`, and `release_hosts` should be available.
+
+Notes:
+
+- Cursor v0.48+ is required for Streamable HTTP MCP.
+- Prefer `${env:TACHIKOMA_API_TOKEN}` over pasting the raw token into `mcp.json`.
+- If the tools fail with 401, create a new token at `/tokens` and update the env var.
+
 # Development
 
 Prerequisites:

@@ -1,7 +1,7 @@
 mod api;
-mod auth;
+pub(crate) mod auth;
 mod hosts;
-mod templates;
+pub(crate) mod templates;
 mod tokens;
 
 use axum::http::StatusCode;
@@ -10,12 +10,11 @@ use axum::{
     body::Body,
     extract::{FromRef, MatchedPath, Request},
     middleware,
-    response::{ErrorResponse, IntoResponse, Redirect},
+    response::{IntoResponse, Redirect},
     routing::{MethodRouter, get, post},
 };
 
 use axum_extra::extract::cookie::Key;
-use axum_flash::Flash;
 use axum_login::AuthManagerLayerBuilder;
 use md5::{Digest, Md5};
 use std::{convert::Infallible, net::SocketAddr};
@@ -150,12 +149,27 @@ impl Application {
                 bearer_auth_middleware,
             ));
 
+        let mcp_router = Router::new()
+            .nest_service(
+                "/mcp",
+                crate::mcp::streamable_http_service(
+                    state.hosts_service.clone(),
+                    state.groups_service.clone(),
+                    state.users_service.clone(),
+                ),
+            )
+            .route_layer(middleware::from_fn_with_state(
+                state.clone(),
+                bearer_auth_middleware,
+            ));
+
         let app = Router::new()
             .route("/login", post(login::login).get(login::login_page))
             .route("/hosts/leased", get(hosts::get_hosts_json))
             .merge(assets_router)
             .merge(authed_router.route_layer(middleware::from_fn(auth_middleware)))
             .merge(api_router)
+            .merge(mcp_router)
             .fallback(|| async { Redirect::to("/hosts").into_response() })
             .layer(auth_layer)
             .layer(tracing_layer)
@@ -188,12 +202,6 @@ impl Server {
     pub async fn serve(self) -> Result<(), std::io::Error> {
         axum::serve(self.listener, self.app).await
     }
-}
-
-pub fn flash_redirect(msg: &str, path: &str, flash: Flash) -> ErrorResponse {
-    (flash.error(msg), Redirect::to(path))
-        .into_response()
-        .into()
 }
 
 pub fn cached_asset<S>(

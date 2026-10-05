@@ -5,6 +5,7 @@ pub mod configuration;
 pub mod db;
 pub mod ldap;
 pub mod logic;
+pub mod mcp;
 pub mod telemetry;
 pub mod web;
 

@@ -20,8 +20,8 @@ use crate::{
     logic::groups::GroupsService,
 };
 
+use super::AuthLink;
 use super::auth::middleware::User;
-use super::{AuthLink, flash_redirect};
 use axum_extra::extract::cookie::Cookie;
 #[derive(Deserialize)]
 pub struct HostsParams {
@@ -175,7 +175,7 @@ pub async fn lease_hosts(
     flash: Flash,
     Extension(user): Extension<User>,
     Form(data): Form<LeaseForm>,
-) -> axum::response::Result<Redirect> {
+) -> impl IntoResponse {
     let res = service
         .lease(
             &user.id().into(),
@@ -185,8 +185,8 @@ pub async fn lease_hosts(
         )
         .await;
     match res {
-        Ok(_) => Ok(Redirect::to("/hosts")),
-        Err(e) => Err(flash_redirect(&e.to_string(), "/hosts", flash)),
+        Ok(_) => Redirect::to("/hosts").into_response(),
+        Err(e) => (flash.error(e.to_string()), Redirect::to("/hosts")).into_response(),
     }
 }
 
@@ -201,7 +201,7 @@ pub async fn lease_random(
     flash: Flash,
     Extension(user): Extension<User>,
     Form(data): Form<LeaseForm>,
-) -> axum::response::Result<Redirect> {
+) -> impl IntoResponse {
     let res = service
         .lease_random(
             &user.id().into(),
@@ -211,8 +211,8 @@ pub async fn lease_random(
         )
         .await;
     match res {
-        Ok(_) => Ok(Redirect::to("/hosts")),
-        Err(e) => Err(flash_redirect(&e.to_string(), "/hosts", flash)),
+        Ok(_) => Redirect::to("/hosts").into_response(),
+        Err(e) => (flash.error(e.to_string()), Redirect::to("/hosts")).into_response(),
     }
 }
 

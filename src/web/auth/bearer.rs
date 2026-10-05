@@ -63,7 +63,7 @@ pub async fn bearer_auth_middleware(
     }
 }
 
-async fn authenticate_bearer(
+pub async fn authenticate_bearer(
     registry: &Registry,
     users_info: &UsersInfo,
     api_tokens_service: &ApiTokensService,

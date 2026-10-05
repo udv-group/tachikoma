@@ -26,8 +26,10 @@ itertools = "0.14.0"
 ldap3 = "^0.12"
 md-5 = "0.10.6"
 rand = "0.10"
+rmcp = { version = "3.5.0", features = ["server", "macros", "transport-streamable-http-server", "schemars"] }
 secrecy = { version = "0.10", features = ["serde"] }
 serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1"
 serde-aux = { version = "4" }
 sha2 = "0.10"
 teloxide = { version = "0.17", features = ["macros"] }
@@ -38,6 +40,7 @@ tower-http = { version = "0.6.8", features = ["trace"] }
 tower-sessions = "0.14"
 tracing = "0.1"
 uuid = { version = "1.22", features = ["v4"] }
+http = "1.5.0"
 
 [dependencies.axum-extra]
 version = "0.12"
