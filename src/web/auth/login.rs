@@ -1,6 +1,7 @@
 use askama::Template;
 use axum::{
     Form,
+    http::StatusCode,
     response::{Html, IntoResponse, Redirect, Response},
 };
 use axum_flash::{Flash, IncomingFlashes};
@@ -11,10 +12,7 @@ use tracing::warn;
 
 use crate::{
     AppInfo,
-    web::{
-        auth::middleware::{AuthSession, Credentials},
-        flash_redirect,
-    },
+    web::auth::middleware::{AuthSession, Credentials},
 };
 
 #[derive(Deserialize)]
@@ -31,7 +29,7 @@ pub async fn login(
     mut session: AuthSession,
     flash: Flash,
     Form(form): Form<FormData>,
-) -> axum::response::Result<Redirect> {
+) -> impl IntoResponse {
     let credentials = Credentials {
         username: form.username,
         password: form.password,
@@ -41,29 +39,27 @@ pub async fn login(
     let user = match session.authenticate(credentials).await {
         Ok(Some(user)) => user,
         Ok(None) => {
-            return Err(flash_redirect("Wrong credentials", "/login", flash));
+            return (flash.error("Wrong credentials"), Redirect::to("/login")).into_response();
         }
         Err(e) => {
             warn!("Authentication error: {}", e);
-            return Err(flash_redirect("Something went wrong", "/login", flash));
+            return (flash.error("Something went wrong"), Redirect::to("/login")).into_response();
         }
     };
 
-    session.login(&user).await.map_err(|err| {
+    if let Err(err) = session.login(&user).await {
         error!("Got unexpected error: {}", err);
-        "Unexpected error".to_string()
-    })?;
-    Ok(Redirect::to("/hosts"))
+        return (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error").into_response();
+    }
+    Redirect::to("/hosts").into_response()
 }
 
 #[tracing::instrument(skip(session))]
-pub async fn logout(mut session: AuthSession) -> axum::response::Result<Redirect> {
-    session
-        .logout()
-        .await
-        .map_err(|_| "Unexpected error".to_string())?;
-
-    Ok(Redirect::to("/login"))
+pub async fn logout(mut session: AuthSession) -> impl IntoResponse {
+    if session.logout().await.is_err() {
+        return (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error").into_response();
+    }
+    Redirect::to("/login").into_response()
 }
 
 #[derive(Template)]
