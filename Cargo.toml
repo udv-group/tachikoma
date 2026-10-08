@@ -23,7 +23,7 @@ futures-concurrency = "^7.7"
 hyper = "1.7.0"
 ipnetwork = { version = "0.21", features = ["serde"] }
 itertools = "0.14.0"
-ldap3 = "^0.12"
+ldap3 = { version = "^0.12", default-features = false, features = ["tls-rustls-ring"] }
 md-5 = "0.10.6"
 rand = "0.10"
 rmcp = { version = "3.5.0", features = ["server", "macros", "transport-streamable-http-server", "schemars"] }
@@ -32,7 +32,7 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1"
 serde-aux = { version = "4" }
 sha2 = "0.10"
-teloxide = { version = "0.17", features = ["macros"] }
+teloxide = { version = "0.17", default-features = false, features = ["macros", "ctrlc_handler", "rustls"] }
 thiserror = "2.0"
 tokio = { version = "1.50", features = ["rt-multi-thread", "macros"] }
 tower = "0.5"
