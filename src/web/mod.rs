@@ -156,6 +156,7 @@ impl Application {
                     state.hosts_service.clone(),
                     state.groups_service.clone(),
                     state.users_service.clone(),
+                    &settings.app.mcp_allowed_hosts,
                 ),
             )
             .route_layer(middleware::from_fn_with_state(

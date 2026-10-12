@@ -140,6 +140,7 @@ Notes:
 - Cursor v0.48+ is required for Streamable HTTP MCP.
 - Prefer `${env:TACHIKOMA_API_TOKEN}` over pasting the raw token into `mcp.json`.
 - If the tools fail with 401, create a new token at `/tokens` and update the env var.
+- **MCP Host allowlist** (`[app].mcp_allowed_hosts` in config): omit or set to `[]` to allow only loopback hosts (`localhost`, `127.0.0.1`, `::1`). Set `["*"]` to disable DNS-rebinding Host protection (any host). For a reverse-proxy or public stand, set allowed hostnames in `production.toml` under `CONFIG_DIR` (e.g. `/etc/tachikoma/production.toml`), such as `mcp_allowed_hosts = ["dev-stands.example.com"]`.
 
 # Development
 

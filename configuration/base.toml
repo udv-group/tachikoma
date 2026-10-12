@@ -4,6 +4,10 @@ host = "127.0.0.1"
 hmac_secret = "this-is-a-very-long-secret-string!"
 lease_limit = 10
 api_token_limit = 10
+# MCP Streamable HTTP Host allowlist. Empty = loopback only.
+# Use ["*"] to disable the Host check. Example for a public stand:
+# mcp_allowed_hosts = ["dev-stands.my.company"]
+mcp_allowed_hosts = []
 
 [database]
 host = "127.0.0.1"

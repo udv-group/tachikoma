@@ -56,6 +56,8 @@ pub struct AppSettings {
     pub api_token_limit: usize,
     #[serde(deserialize_with = "deserialize_key_secret")]
     pub hmac_secret: Vec<u8>,
+    #[serde(default)]
+    pub mcp_allowed_hosts: Vec<String>,
 }
 
 impl AppSettings {

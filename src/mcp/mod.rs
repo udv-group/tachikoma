@@ -256,10 +256,36 @@ impl ServerHandler for TachikomaMcp {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum McpHostPolicy {
+    Allowed(Vec<String>),
+    AllowAny,
+}
+
+pub fn resolve_mcp_host_policy(configured: &[String]) -> McpHostPolicy {
+    if configured.is_empty() {
+        return McpHostPolicy::Allowed(vec!["localhost".into(), "127.0.0.1".into(), "::1".into()]);
+    }
+    if configured.len() == 1 && configured[0] == "*" {
+        return McpHostPolicy::AllowAny;
+    }
+    McpHostPolicy::Allowed(configured.to_vec())
+}
+
+pub fn streamable_http_server_config(configured: &[String]) -> StreamableHttpServerConfig {
+    match resolve_mcp_host_policy(configured) {
+        McpHostPolicy::AllowAny => StreamableHttpServerConfig::default().disable_allowed_hosts(),
+        McpHostPolicy::Allowed(hosts) => {
+            StreamableHttpServerConfig::default().with_allowed_hosts(hosts)
+        }
+    }
+}
+
 pub fn streamable_http_service(
     hosts_service: HostsService,
     groups_service: GroupsService,
     users_service: UsersService,
+    mcp_allowed_hosts: &[String],
 ) -> StreamableHttpService<TachikomaMcp, LocalSessionManager> {
     let hosts_service = hosts_service;
     let groups_service = groups_service;
@@ -273,6 +299,49 @@ pub fn streamable_http_service(
             ))
         },
         Arc::new(LocalSessionManager::default()),
-        StreamableHttpServerConfig::default(),
+        streamable_http_server_config(mcp_allowed_hosts),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_config_uses_loopback() {
+        match resolve_mcp_host_policy(&[]) {
+            McpHostPolicy::Allowed(hosts) => {
+                assert_eq!(hosts, vec!["localhost", "127.0.0.1", "::1"]);
+            }
+            McpHostPolicy::AllowAny => panic!("expected Allowed"),
+        }
+    }
+
+    #[test]
+    fn star_alone_allows_any() {
+        assert!(matches!(
+            resolve_mcp_host_policy(&["*".into()]),
+            McpHostPolicy::AllowAny
+        ));
+    }
+
+    #[test]
+    fn custom_list_used_as_is() {
+        match resolve_mcp_host_policy(&["dev-stands.my.company".into()]) {
+            McpHostPolicy::Allowed(hosts) => {
+                assert_eq!(hosts, vec!["dev-stands.my.company"]);
+            }
+            McpHostPolicy::AllowAny => panic!("expected Allowed"),
+        }
+    }
+
+    #[test]
+    fn star_with_other_hosts_is_literal_list() {
+        match resolve_mcp_host_policy(&["*".into(), "example.com".into()]) {
+            McpHostPolicy::Allowed(hosts) => {
+                assert_eq!(hosts, vec!["*", "example.com"]);
+            }
+            McpHostPolicy::AllowAny => panic!("expected Allowed"),
+        }
+    }
 }
