@@ -7,7 +7,9 @@ use models::{AdGroupLeaseLimit, Group, GroupId};
 use sqlx::{PgPool, Postgres, Transaction};
 
 use crate::configuration::DatabaseSettings;
-use crate::db::models::{ApiToken, ApiTokenId, Host, HostId, LeasedHost, User, UserId};
+use crate::db::models::{
+    ApiToken, ApiTokenId, Host, HostId, HostListing, LeasedHost, User, UserId,
+};
 
 #[derive(Clone)]
 pub struct Registry {
@@ -95,6 +97,39 @@ impl RegistryTx<'_> {
             WHERE hosts.user_id = $1 ORDER BY hosts.leased_until, hosts.ip_address ASC
             "#,
         ).bind(user_id.deref())
+        .fetch_all(&mut *self.tx)
+        .await
+    }
+    pub async fn get_hosts_filtered(
+        &mut self,
+        email: Option<&str>,
+        group_id: Option<GroupId>,
+    ) -> sqlx::Result<Vec<HostListing>> {
+        sqlx::query_as(
+            r#"
+            SELECT hosts.id as hid,
+                   hosts.hostname,
+                   hosts.ip_address,
+                   hosts.leased_until,
+                   CASE
+                       WHEN groups.id IS NULL THEN NULL::json
+                       ELSE json_build_object('id', groups.id, 'name', groups.name)
+                   END as "group",
+                   users.id as user_id,
+                   users.dn,
+                   users.tg_handle,
+                   users.email,
+                   users.link
+            FROM hosts
+            LEFT JOIN users ON hosts.user_id = users.id
+            LEFT JOIN groups ON groups.id = hosts.group_id
+            WHERE ($1::text IS NULL OR users.email = $1)
+              AND ($2::int IS NULL OR hosts.group_id = $2)
+            ORDER BY hosts.ip_address ASC
+            "#,
+        )
+        .bind(email)
+        .bind(group_id.map(|id| id.0))
         .fetch_all(&mut *self.tx)
         .await
     }

@@ -5,7 +5,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     AppInfo,
-    db::models::{ApiTokenId, Group, GroupId, Host, HostId, LeasedHost, User as UserDb},
+    db::models::{
+        ApiTokenId, Group, GroupId, Host, HostId, HostListing, LeasedHost, User as UserDb,
+    },
 };
 
 use super::auth::middleware::User;
@@ -105,6 +107,8 @@ pub struct HostInfo {
     pub hostname: String,
     pub ip_address: String,
     pub lease_info: Option<LeaseInfo>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group: Option<GroupInfo>,
 }
 impl From<(Host, Option<UserDb>)> for HostInfo {
     fn from(value: (Host, Option<UserDb>)) -> Self {
@@ -118,6 +122,7 @@ impl From<(Host, Option<UserDb>)> for HostInfo {
                 (Some(user), Some(leased_until)) => Some((user, leased_until).into()),
                 _ => None,
             },
+            group: None,
         }
     }
 }
@@ -133,6 +138,32 @@ impl From<LeasedHost> for HostInfo {
             hostname: value.hostname,
             ip_address: value.ip_address.ip().to_string(),
             lease_info: Some((value.user, value.leased_until).into()),
+            group: value.group.map(Into::into),
+        }
+    }
+}
+impl From<HostListing> for HostInfo {
+    fn from(value: HostListing) -> Self {
+        let user = match (value.user_id, value.dn, value.email, value.link) {
+            (Some(id), Some(dn), Some(email), Some(link)) => Some(UserDb {
+                id,
+                dn,
+                tg_handle: value.tg_handle,
+                email,
+                link,
+            }),
+            _ => None,
+        };
+
+        Self {
+            id: value.id,
+            hostname: value.hostname,
+            ip_address: value.ip_address.ip().to_string(),
+            lease_info: match (user, value.leased_until) {
+                (Some(user), Some(leased_until)) => Some((user, leased_until).into()),
+                _ => None,
+            },
+            group: value.group.map(Into::into),
         }
     }
 }
