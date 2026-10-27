@@ -93,8 +93,26 @@ pub struct LeasedHost {
     pub hostname: String,
     pub ip_address: IpNetwork,
     pub leased_until: DateTime<Utc>,
+    #[sqlx(default, json(nullable))]
+    pub group: Option<Group>,
     #[sqlx(flatten)]
     pub user: User,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, FromRow)]
+pub struct HostListing {
+    #[sqlx(rename = "hid")]
+    pub id: HostId,
+    pub hostname: String,
+    pub ip_address: IpNetwork,
+    pub leased_until: Option<DateTime<Utc>>,
+    #[sqlx(default, json(nullable))]
+    pub group: Option<Group>,
+    pub user_id: Option<UserId>,
+    pub dn: Option<String>,
+    pub tg_handle: Option<String>,
+    pub email: Option<String>,
+    pub link: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, FromRow)]

@@ -4,7 +4,7 @@ use axum::{
     extract::{Query, State},
     response::{Html, IntoResponse, Json, Redirect},
 };
-use axum_extra::extract::{CookieJar, Form, OptionalQuery};
+use axum_extra::extract::{CookieJar, Form};
 use axum_flash::{Flash, IncomingFlashes};
 use axum_login::AuthUser;
 use chrono::TimeDelta;
@@ -243,52 +243,21 @@ pub async fn release_all(
 
 #[derive(Deserialize)]
 pub struct GetHostsQuery {
-    mail: String,
+    mail: Option<String>,
+    group_id: Option<GroupId>,
 }
 
 pub async fn get_hosts_json(
     State(hosts_service): State<HostsService>,
-    State(user_service): State<UsersService>,
-    OptionalQuery(query): OptionalQuery<GetHostsQuery>,
+    Query(query): Query<GetHostsQuery>,
 ) -> impl IntoResponse {
-    match query {
-        Some(GetHostsQuery { mail }) => match user_service.get_user_by_mail(&mail).await.unwrap() {
-            None => Json(vec![]),
-            Some(user) => Json(
-                hosts_service
-                    .get_leased_hosts(&user.id)
-                    .await
-                    .unwrap()
-                    .into_iter()
-                    .map(HostInfo::from)
-                    .collect::<Vec<_>>(),
-            ),
-        },
-        None => {
-            let users: HashMap<UserId, UserDb> = HashMap::from_iter(
-                user_service
-                    .get_all_users()
-                    .await
-                    .unwrap()
-                    .into_iter()
-                    .map(|user| (user.id, user)),
-            );
-
-            Json(
-                hosts_service
-                    .get_all_hosts()
-                    .await
-                    .unwrap()
-                    .into_iter()
-                    .map(|host| {
-                        let user = host
-                            .user_id
-                            .and_then(|user_id| users.get(&user_id).cloned());
-
-                        (host, user).into()
-                    })
-                    .collect::<Vec<HostInfo>>(),
-            )
-        }
-    }
+    Json(
+        hosts_service
+            .get_hosts_filtered(query.mail.as_deref(), query.group_id)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(HostInfo::from)
+            .collect::<Vec<_>>(),
+    )
 }

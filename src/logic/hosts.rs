@@ -6,7 +6,7 @@ use thiserror::Error;
 use crate::db::RegistryTx;
 use crate::db::{
     Registry,
-    models::{GroupId, Host, HostId, LeasedHost, UserId},
+    models::{GroupId, Host, HostId, HostListing, LeasedHost, UserId},
 };
 
 #[derive(Error, Debug)]
@@ -69,6 +69,17 @@ impl HostsService {
     pub async fn get_leased_hosts(&self, user_id: &UserId) -> Result<Vec<LeasedHost>, HostError> {
         let mut tx = self.registry.begin().await?;
         let hosts = tx.get_leased_hosts(user_id).await?;
+        tx.commit().await?;
+        Ok(hosts)
+    }
+
+    pub async fn get_hosts_filtered(
+        &self,
+        email: Option<&str>,
+        group_id: Option<GroupId>,
+    ) -> Result<Vec<HostListing>, HostError> {
+        let mut tx = self.registry.begin().await?;
+        let hosts = tx.get_hosts_filtered(email, group_id).await?;
         tx.commit().await?;
         Ok(hosts)
     }

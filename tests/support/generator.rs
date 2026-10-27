@@ -23,6 +23,7 @@ pub struct MockGroup {
 pub struct MockUser {
     pub id: UserId,
     pub tg_handle: String,
+    pub email: String,
 }
 
 impl Generator {
@@ -80,6 +81,7 @@ impl Generator {
         MockUser {
             id: row.id.into(),
             tg_handle,
+            email: mail,
         }
     }
 }
